@@ -1,49 +1,57 @@
 # Edgy 
 # (c) Copyright 2008 Andy Kent. All Rights Reserved.
 
-require 'fileutils'
-require 'yaml'
-require 'digest/sha1'
-require 'net/http'
-
-
-TEMP          = File.join('/tmp', "edgy")
-CONFIG        = "http://edgy.4ninjas.org/sources.yml" 
-INFO          = "http://edgy.4ninjas.org/info.yml" 
-# CONFIG        = File.join(File.dirname(__FILE__), "sources.yml")
-EDGY_VERSION  = 0.1
 
 namespace :edgy do
-  desc "Show the current version of Edgy that is installed"
-  task :version do
-    puts '-'*70
-    puts "Currently running on Edgy version #{EDGY_VERSION}"
-    puts '-'*70
-  end
   
-  desc "This updates Edgy to the latest stable version"
-  task :self_update do
-    if info['stable_version'] < EDGY_VERSION
-      puts "*"*70
-      puts "SELF UPDATING: You have an old version of Edgy...upgrading from #{EDGY_VERSION} to #{info['stable_version']}..."
-      puts "*"*70
-      `sake -T http://edgy.4ninjas.org/edgy.sake`
+  namespace :self do
+    desc "Show the current version of Edgy that is installed"
+    task :version => ['edgy:dependencies'] do
+      puts '-'*80
+      puts "Currently running on Edgy version #{EDGY_VERSION}"
+      puts '-'*80
+    end
+    
+    desc "This updates Edgy to the latest stable version"
+    task :update => ['edgy:dependencies'] do
+      if info['stable_version'] > EDGY_VERSION
+        puts "-"*80
+        puts "SELF UPDATING: You have an old version of Edgy...upgrading from #{EDGY_VERSION} to #{info['stable_version']}..."
+        edgy_uninstall
+        sh "sake -i http://edgy.4ninjas.org/edgy.sake"
+        puts "-"*80
+        puts "UPDATE COMPLETE: Now running Edgy version #{info['stable_version']}"
+        puts "YOU WILL NEED TO RUN YOUR COMMAND AGAIN"
+        puts "-"*80
+        exit
+      end
+    end
+  
+    desc "This uninstalls Edgy and all associated files"
+    task :uninstall => ['edgy:dependencies'] do
+        puts "-"*80
+        puts "SELF UNINSTALLING: We're sorry to see you go... :)"
+        clean_up
+        rm CONFIG_FILE
+        edgy_uninstall
+        puts "-"*80
     end
   end
   
   desc "Show available packages"
-  task :list => [:self_update] do
-    puts '-'*70
-    puts "Packages available from #{CONFIG}"
-    puts '-'*70
-    max = config.keys.map {|k| k.length}.max
-    config.to_a.sort {|a,b| a[0]<=>b[0] }.each do |pkg, info|
+  task :list => ['edgy:dependencies', 'edgy:self:update'] do
+    puts '-'*80
+    puts "Packages available from #{SOURCES}"
+    puts '-'*80
+    max = sources.keys.map {|k| k.length}.max
+    sources.to_a.sort {|a,b| a[0]<=>b[0] }.each do |pkg, info|
       puts "#{pkg.rjust(max)} | #{info['description'] || 'No description provided'}"
     end
   end
 
-  desc "Build the specified packages from source"
-  task :install => [:self_update] do
+  desc "Build & install the specified packages from source"
+  task :install => ['edgy:dependencies', 'edgy:self:update'] do
+    failures = 0
     if ENV['packages']
       packages = ENV['packages'].split(' ')
     else
@@ -52,91 +60,173 @@ namespace :edgy do
     end
     clean_up
     packages.each do |pkg|
-      install(pkg)
+    if install(pkg)
+      log_installation(pkg) 
+    else
+      failures+=1
+    end
+    end  
+    clean_up
+    puts "-"*80
+    if failures > 0
+      puts "We did the best we can but there were #{failures} failed package installations."
+    else
+      puts "Woohoo! We're all done."
+    end
+    puts "-"*80
+  end
+  
+  desc "Update all previously installed packages to the lastest edge revisions"
+  task :update => ['edgy:dependencies', 'edgy:self:update'] do
+    failures = 0
+    puts "-"*80
+    puts "UPDATING: #{config['installed_packages'].length} packages"
+    clean_up
+    config['installed_packages'].each do |pkg|
+      unless install(pkg)
+        failures+=1
+      end
     end
     clean_up
-    puts "*"*70
-    puts "Woohoo! We're all done."
-    puts "*"*70
+    puts "-"*80
+    if failures > 0
+      puts "We did the best we can but there were #{failures} failed package installations."
+    else
+      puts "Woohoo! We're all done."
+    end
+    puts "-"*80
   end
-end
+  
+  task :dependencies do
+    require 'fileutils'
+    require 'yaml'
+    require 'digest/sha1'
+    require 'net/http'
+    TEMP          = File.join('/tmp', "edgy")
+    SOURCES       = "http://edgy.4ninjas.org/sources.yml" 
+    # SOURCES       = File.join(File.dirname(__FILE__), "sources.yml")
+    INFO          = "http://edgy.4ninjas.org/info.yml" 
+    CONFIG_FILE   = "#{ENV['HOME']}/.edgyconfig"
+    EDGY_VERSION  = 0.3
+    
+    def edgy_uninstall
+      installed_commands = `sake -Tv | grep edgy:`.split("\n").map {|l| l.scan(/edgy:[\w:_]+/)}
+      sh "sake -u #{installed_commands.join(' ')}"
+    end
+    
+    def sources
+      @sources ||= load_yaml_from(SOURCES)
+    end
+    
+    def config(reload=false)
+      @config = nil if reload
+      @config ||= load_yaml_from(CONFIG_FILE, true)
+    end
+    
+    def save_config
+      File.open( CONFIG_FILE, 'w' ) do |out|
+        YAML.dump( config, out )
+      end
+      config(true)
+    end
 
-def config
-  @config ||= load_yaml_from(CONFIG)
-end
+    def info
+      @info ||= load_yaml_from(INFO)
+    end
 
-def info
-  @info ||= load_yaml_from(INFO)
-end
+    def load_yaml_from(location, create=false)
+      if location.match(/http:\/\//)
+        YAML.load(Net::HTTP.get(URI.parse(location)))
+      else
+        touch(location) if create and !File.exists?(location) 
+        YAML.load_file(location) || {}
+      end
+    end
 
-def load_yaml_from(location)
-  if location.match(/http:\/\//)
-    YAML.load(Net::HTTP.get(URI.parse(location)))
-  else
-    YAML.load_file(location)
-  end
-end
+    def install(pkg)
+      puts "-"*80
+      unless options = sources[pkg]
+        puts "ERROR: #{pkg} package description not found in #{SOURCES}...skipping #{pkg}"
+        return false
+      end
+      puts "BUILDING:: #{pkg}..."
+      if options['dependencies']
+        dependencies = options['dependencies'].split(' ')
+        puts "#{pkg} requires #{dependencies.length} other package#{'s' unless dependencies.length==0} - #{dependencies.join(', ')}"
+        dependencies.each do |dependency|
+          install(dependency)
+        end
+      end
+      build(pkg, options['repository'], options['install_path'], options['clean'], options['command']) if options['repository']
+      return true
+    end
 
-def install(pkg)
-  puts "*"*70
-  unless options = config[pkg]
-    puts "ERROR: #{pkg} package description not found in #{CONFIG}...skipping #{pkg}"
-    return 
-  end
-  puts "BUILDING:: #{pkg}..."
-  if options['dependencies']
-    dependencies = options['dependencies'].split(' ')
-    puts "#{pkg} requires #{dependencies.length} other package#{'s' unless dependencies.length==0} - #{dependencies.join(', ')}"
-    dependencies.each do |dependency|
-      install(dependency)
+    def build(pkg, repo, install_path=nil, clean=false, command=nil)
+      install_path ||= './'
+      install_path = File.join temp_dir_for(repo), install_path
+      cd_to_temp
+      unless File.exists?(temp_dir_for(repo))
+        puts "CLONING:: #{pkg} from #{repo}..."
+        `git clone #{repo} #{temp_dir_for(repo)}`
+      end
+      remove_pkg(pkg) if clean and gem_is_installed?(pkg) and confirm("#{pkg} recommends a clean install, would you like to remove old #{pkg} gems?")
+      command ? install_pkg_with_command(pkg, install_path, command) : install_pkg_with_rake(pkg, install_path)
+    end
+    
+    def gem_is_installed?(gem_name)
+      `gem list | grep #{gem_name}`.length > 0
+    end
+    
+    def remove_pkg(pkg)
+      puts "REMOVING:: uninstalling #{pkg} before attempting clean install..."
+      `gem uninstall -a #{pkg}`
+    end
+    
+    def log_installation(pkg)
+      config['installed_packages'] ||= []
+      config['installed_packages'] << pkg
+      config['installed_packages'].uniq!
+      save_config
+    end
+
+    def install_pkg_with_rake(pkg, rake_dir)
+      cd rake_dir
+      puts "INSTALLING:: #{pkg} from rake file: #{rake_dir}"
+      `sudo rake install`
+    end
+
+    def install_pkg_with_command(pkg, install_path, command)
+      cd install_path
+      puts "INSTALLING:: #{pkg} with custom command: #{command}"
+      `#{command}`
+    end
+
+    def cd_to_temp
+      mkdir TEMP unless File.exists? TEMP
+      cd TEMP
+    end
+
+    def clean_up
+      cd_to_temp 
+      if Dir.entries(pwd).reject {|e| e =~ /^\./}.any? # craxy way of find if DIR is empty accept for hidden files
+        puts "\nCleaning up #{pwd}..."
+        `sudo rm -rf ./*`
+      end
+    end
+
+    def temp_dir_for(repo)
+      sha1 = Digest::SHA1.hexdigest(repo)
+      "#{TEMP}/#{sha1}"
+    end
+    
+    def confirm(question)
+      return true if config['auto_confirm'] == 'all'
+      puts "-"*80
+      puts "CONFIRM: #{question} (y/n)"
+      result = (STDIN.gets.strip.downcase == 'y')
+      puts "-"*80
+      result
     end
   end
-  build(pkg, options['repository'], options['install_path'], options['clean'], options['command']) if options['repository']
-end
-
-def build(pkg, repo, install_path=nil, clean=false, command=nil)
-  install_path ||= './'
-  install_path = File.join temp_dir_for(repo), install_path
-  cd_to_temp
-  unless File.exists?(temp_dir_for(repo))
-    puts "CLONING:: #{pkg} from #{repo}..."
-    `git clone #{repo} #{temp_dir_for(repo)}`
-  end
-  remove_pkg(pkg) if clean
-  command ? install_pkg_with_command(pkg, install_path, command) : install_pkg_with_rake(pkg, install_path)
-end
-
-def remove_pkg(pkg)
-  puts "REMOVING:: a clean install is required so uninstalling #{pkg} before attempting install..."
-  `gem uninstall -a -i #{pkg}`
-end
-
-def install_pkg_with_rake(pkg, rake_dir)
-  cd rake_dir
-  puts "INSTALLING:: #{pkg} from rake file: #{rake_dir}"
-  `sudo rake install`
-end
-
-def install_pkg_with_command(pkg, install_path, command)
-  cd install_path
-  puts "INSTALLING:: #{pkg} with custom command: #{command}"
-  `#{command}`
-end
-
-def cd_to_temp
-  mkdir TEMP unless File.exists? TEMP
-  cd TEMP
-end
-
-def clean_up
-  cd_to_temp 
-  if Dir.entries(pwd).reject {|e| e =~ /^\./}.any? # craxy way of find if DIR is empty accept for hidden files
-    puts "\nCleaning up #{pwd}..."
-    `sudo rm -rf ./*`
-  end
-end
-
-def temp_dir_for(repo)
-  sha1 = Digest::SHA1.hexdigest(repo)
-  "#{TEMP}/#{sha1}"
+  
 end

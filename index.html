@@ -7,28 +7,120 @@
 
 	<title>Edgy - Keeping you on the edge of your seat!</title>
 	
+	<style type="text/css" media="screen">
+		body {
+		 	background-color: #191919;
+		 	color: #3D3B37;
+		 	font: 62.5%/1.4 "Helvetica Neue", Arial, Helvetica, Geneva, sans-serif;
+		 	margin: 0;
+		 	padding: 0;
+		}
+
+		#page {
+		 	width: 46.5em;
+		 	margin: 0 auto;
+		 	padding: 1em 6em;
+		 	background: #fff;
+			font-size: 1.3em;
+		}
+
+		#warning {
+			position: fixed;
+			left: 0;
+			top: 0;
+			width: 100%;
+			margin: 0;
+			padding: .5em;
+			font-size: 2em;
+			background: #ff9;
+			text-align: center;
+		}	
+		a {
+		 	color: #3366ff;
+		 	text-decoration: underline;
+		}
+		a:hover {
+		 	color: #ff6633;
+		}
+		h1, h2 {
+			 	margin: 2em 0 0;
+			 	text-align: center;
+			 	font-weight: normal;
+			 	text-transform: uppercase;
+			 	color: #c60;
+			 	border-top: 1px solid #f1f1f1;
+			 	border-bottom: 1px solid #f1f1f1;
+			 	font-size: 2em;
+				font-family: times, Times New Roman, times-roman, georgia, serif;
+			}
+			h1 {
+				margin: 3em 0 5em 0;
+				font-size: 2.4em;
+			}
+			pre {
+			 	clear: both;
+			 	display: block;
+			 	margin: 0;
+			 	padding: 1em 2em;
+			 	background: #002241;
+			 	overflow: auto;
+			} 
+
+			code {
+			 	font: .9em Monaco, "Courier New", Courier, mono;
+			 	color: #933;
+			}
+
+			pre code {
+			 	color: #f6f07d;
+			}
+
+			blockquote p {
+			 	padding: 2em;
+			 	font-style: italic;
+			 	font-family: times, Times New Roman, times-roman, georgia, serif;
+			 	font-size: 1.1em;
+			}
+	</style>
 </head>
 
 <body>
 
 	<div id="page">
-		<h1>Edgy - Keeping you on the edge of your seat!</h1>
-		<p>Edgy was born of a desire to have an easy way for keeping up to date with all the latest gems from their source code repositories.</p>
-		<p>Installing Edgy works like this&hellip;</p>
-		<code>
-			<pre>sudo gem install sake
-sake -i 'http://edgy.4ninjas.org/edgy.sake'				
+		
+		<p id="warning">This is a pre 1.0 release please read the <a href="#release_notes">release notes &darr;</a></p>
+		
+		<h1>Edgy</h1>
+		
+		<h2>Gems from their source</h2>
+		<p><code>Edgy</code> was born of a desire to have an easy way for keeping up to date with all the latest <code>gems</code> from their source code repositories.</p>
+		<p><code>Edgy</code> is a small set of lightweight <code>Rake</code> tasks that make it trivial to download and install <code>gems</code> direct from their source code repositories. Edgy packages are defined in <code>YAML</code> so it's trivial to write package definitions for all your favorite projects <a href="/sources.yml">here's an example definition file.</a></p>
+		
+		<h2>Installing Edgy works like this&hellip;</h2>
+		<p>Install Sake</p>
+		<pre><code>sudo gem install sake</code></pre>
+		<p>Install the Edgy Sake tasks</p>
+		<pre><code>sake -i 'http://edgy.4ninjas.org/edgy.sake'</code></pre>
+		
+		<h2>Using Edgy works like this&hellip;</h2>
+		<p>see the current edgy version that's installed</p>
+		<pre><code>sake edgy:self:version</code></pre>
+		<p>shows all available packages</p>
+		<pre><code>sake edgy:list</code></pre>
+		<p>install the merb, data objects and data mapper packages</p>
+		<pre><code>sake edgy:install packages="merb do dm"</code></pre>
+		<p>or get the whole merb stack with</p>
+		<pre><code>sake edgy:install packages="merb-stack"</code></pre>
+		<p>Once you've installed a package you can automatically update all installed packages</p>
+		<pre><code>sake edgy:update</code></pre>
 			</pre>
 		</code>
-		<p>Using it works like this&hellip;</p>
-		<code>
-			<pre>sake edgy:version # see the current edgy version that's installed
-sake edgy:list # shows all available packages
-sake edgy:build packages="rspec merb do dm"	# install the rspec,merb, data objects and data mapper packages from GitHub edge.
-			</pre>
-		</code>
-		<p>Notes: This has only been tested on OSX Leopard &amp; not very thoroughly. Currently only GIT repositories are supported but SVN support will be coming soon.<br />
-			Please send your package suggestions to Andy Kent (candyco) andrew.d.kent [at] gmail</p>
+		
+		<h2 id="release_notes">Release Notes</h2>
+		<p>This has only been tested on OSX Leopard &amp; not very thoroughly. Currently only GIT repositories are supported but SVN support will be coming soon. Some edge gems require a clean install so you may be asked to confirm if you want to remove old versions of a gem. The package can update itself so providing it works you should be always upto date, if not then try sake edgy:self:uninstall and then reinstall as above.</p>
+		
+		<h2>Feedback</h2>
+		<p>Please send your package suggestions to Andy Kent (candyco) - andrew.d.kent [at] gmail</p>
 	</div>
 
 </body>

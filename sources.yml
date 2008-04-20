@@ -1,7 +1,11 @@
 merb:
   description: The full Merb stack from wycats GIT repo.
   dependencies: merb-core merb-more merb-plugins
-    
+  
+merb-stack:
+  description: The whole hog; Merb, DataMapper, DataObjects & RSpec
+  dependencies: rspec merb do dm
+  
 merb-core:
   description: Merb core from wycats GIT repo.
   repository: git://github.com/wycats/merb-core.git
@@ -51,10 +55,10 @@ do_postgres:
   install_path: do_postgres
   clean: true
 
-do_sqlite:
+do_sqlite3:
   description: Data Objects SQLite3 drivers
   repository: git://github.com/sam/do.git
-  install_path: do_sqlite
+  install_path: do_sqlite3
   clean: true
 
   
