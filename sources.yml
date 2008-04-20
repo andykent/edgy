@@ -1,0 +1,65 @@
+merb:
+  description: The full Merb stack from wycats GIT repo.
+  dependencies: merb-core merb-more merb-plugins
+    
+merb-core:
+  description: Merb core from wycats GIT repo.
+  repository: git://github.com/wycats/merb-core.git
+
+merb-more:
+  description: All the merb more packages from wycats GIT repo.
+  repository: git://github.com/wycats/merb-more.git 
+
+merb-plugins:
+  description: All the merb plugins packages from wycats GIT repo.
+  repository: git://github.com/wycats/merb-plugins.git
+
+  
+  
+dm:
+  description: The full DataMapper stack from GitHub
+  dependencies: dm-core dm-more
+  
+dm-core:
+  description: The DataMapper Core libs from GitHub
+  repository: git://github.com/sam/dm-core.git
+
+dm-more:
+  description: All the DataMapper more gems from GitHub
+  repository: git://github.com/sam/dm-more.git
+
+  
+  
+do:
+  description: Data Objects and all the do_* database drivers
+  dependencies: data_objects do_sqlite3 do_mysql do_postgres
+
+data_objects:
+  description: Data Objects without any drivers
+  repository: git://github.com/sam/do.git
+  install_path: data_objects
+
+do_mysql:
+  description: Data Objects MySQL drivers
+  repository: git://github.com/sam/do.git
+  install_path: do_mysql
+  clean: true
+
+do_postgres:
+  description: Data Objects PostgreSQL drivers
+  repository: git://github.com/sam/do.git
+  install_path: do_postgres
+  clean: true
+
+do_sqlite:
+  description: Data Objects SQLite3 drivers
+  repository: git://github.com/sam/do.git
+  install_path: do_sqlite
+  clean: true
+
+  
+    
+rspec:
+  description: RSpec Behaviour Driven Development framework on GitHub
+  repository: git://github.com/dchelimsky/rspec.git
+  command: sudo rake gem; sudo gem install pkg/rspec-*.gem
