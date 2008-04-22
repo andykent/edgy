@@ -51,7 +51,9 @@ namespace :edgy do
 
   desc "Build & install the specified packages from source"
   task :install => ['edgy:dependencies', 'edgy:self:update'] do
-    failures = 0
+    package_count = 0
+    failure_count = 0
+    recent_builds = []
     if ENV['packages']
       packages = ENV['packages'].split(' ')
     else
@@ -60,39 +62,50 @@ namespace :edgy do
     end
     clean_up
     packages.each do |pkg|
-    if install(pkg)
-      log_installation(pkg) 
-    else
-      failures+=1
-    end
+      unless recent_builds.include?(pkg)
+        package_count+=1
+        if install(pkg)
+          recent_builds << pkg
+          log_installation(pkg) 
+        else
+          failures+=1
+        end
+      end
     end  
     clean_up
     puts "-"*80
-    if failures > 0
-      puts "We did the best we can but there were #{failures} failed package installations."
+    if failure_count > 0
+      puts "We did the best we can but #{failure_count} out of #{package_count} package#{'s' unless package_count==1} failed to install."
     else
-      puts "Woohoo! We're all done."
+      puts "Woohoo! We're all done. #{package_count} package#{'s' unless package_count==1} were installed."
     end
     puts "-"*80
   end
   
   desc "Update all previously installed packages to the lastest edge revisions"
   task :update => ['edgy:dependencies', 'edgy:self:update'] do
-    failures = 0
+    package_count = 0
+    failure_count = 0
+    recent_builds = []
     puts "-"*80
     puts "UPDATING: #{config['installed_packages'].length} packages"
     clean_up
     config['installed_packages'].each do |pkg|
-      unless install(pkg)
-        failures+=1
+      unless recent_builds.include?(pkg)
+        package_count+=1
+        if install(pkg)
+          recent_builds << pkg
+        else
+          failures+=1
+        end
       end
     end
     clean_up
     puts "-"*80
-    if failures > 0
-      puts "We did the best we can but there were #{failures} failed package installations."
+    if failure_count > 0
+      puts "We did the best we can but #{failure_count} out of #{package_count} package#{'s' unless package_count==1} failed to update."
     else
-      puts "Woohoo! We're all done."
+      puts "Woohoo! We're all done. #{package_count} package#{'s' unless package_count==1} were updated."
     end
     puts "-"*80
   end
@@ -102,16 +115,16 @@ namespace :edgy do
     require 'yaml'
     require 'digest/sha1'
     require 'net/http'
-    TEMP          = File.join('/tmp', "edgy")
+    TEMP          = '/tmp/edgy'
     SOURCES       = "http://edgy.4ninjas.org/sources.yml" 
     # SOURCES       = File.join(File.dirname(__FILE__), "sources.yml")
     INFO          = "http://edgy.4ninjas.org/info.yml" 
     CONFIG_FILE   = "#{ENV['HOME']}/.edgyconfig"
-    EDGY_VERSION  = 0.3
+    EDGY_VERSION  = 0.4
     
     def edgy_uninstall
       installed_commands = `sake -Tv | grep edgy:`.split("\n").map {|l| l.scan(/edgy:[\w:_]+/)}
-      sh "sake -u #{installed_commands.join(' ')}"
+      sh "sake -u #{installed_commands.join(' ')} >> /dev/null"
     end
     
     def sources
@@ -152,7 +165,7 @@ namespace :edgy do
       puts "BUILDING:: #{pkg}..."
       if options['dependencies']
         dependencies = options['dependencies'].split(' ')
-        puts "#{pkg} requires #{dependencies.length} other package#{'s' unless dependencies.length==0} - #{dependencies.join(', ')}"
+        puts "#{pkg} requires #{dependencies.length} other package#{'s' unless dependencies.length==1} - #{dependencies.join(', ')}"
         dependencies.each do |dependency|
           install(dependency)
         end
@@ -192,13 +205,13 @@ namespace :edgy do
     def install_pkg_with_rake(pkg, rake_dir)
       cd rake_dir
       puts "INSTALLING:: #{pkg} from rake file: #{rake_dir}"
-      `sudo rake install`
+      `sudo rake install &> /dev/null`
     end
 
     def install_pkg_with_command(pkg, install_path, command)
       cd install_path
       puts "INSTALLING:: #{pkg} with custom command: #{command}"
-      `#{command}`
+      `#{command} &> /dev/null`
     end
 
     def cd_to_temp

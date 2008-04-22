@@ -67,3 +67,9 @@ rspec:
   description: RSpec Behaviour Driven Development framework on GitHub
   repository: git://github.com/dchelimsky/rspec.git
   command: sudo rake gem; sudo gem install pkg/rspec-*.gem
+  
+
+merb-webrat:
+  description: A Merb friendly fork of the webrat plugin
+  repository: git://github.com/gwynm/webrat.git
+  command: sudo rake gem; sudo rake install_gem
